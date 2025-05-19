@@ -38,6 +38,12 @@ def create_tables():
     """Создание таблиц в базе данных"""
     db.connect()
     db.create_tables([Groups, HistoryGroups])
+    db.create_tables([Groups, HistoryGroups])
+    
+    db.execute_sql('CREATE INDEX IF NOT EXISTS groups_id_channel ON groups(id_channel);')
+    db.execute_sql('CREATE INDEX IF NOT EXISTS history_groups_id_channel ON history_groups(id_channel);')
+    
+    db.close()
     db.close()
 
 def save_history(id_channel, key, value, time_created):
