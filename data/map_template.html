@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Карта Чувашских телеграм-каналов</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
+    <script src="https://d3js.org/d3-geo-projection.v4.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: #f8f9fa;
+        }
+        #map-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: #f8f9fa;
+            overflow: hidden;
+        }
+        .fullscreen-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10000;
+            background: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        .fullscreen-btn:hover {
+            background: #f0f0f0;
+        }
+        .channel-node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .channel-node:hover {
+            filter: brightness(1.2);
+        }
+        .tooltip {
+            position: absolute;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            max-width: 200px;
+        }
+        .tooltip h3 {
+            margin: 0 0 5px 0;
+            color: #333;
+        }
+        .tooltip p {
+            margin: 5px 0;
+            color: #666;
+        }
+        .subscribers-label {
+            fill: white;
+            font-size: 12px;
+            text-anchor: middle;
+            pointer-events: none;
+        }
+        .attribution {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            font-size: 12px;
+            color: #666;
+            background: rgba(255,255,255,0.8);
+            padding: 5px;
+            border-radius: 3px;
+        }
+        #channels-list {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-height: calc(100vh - 20px);
+            max-width: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+        .channels-list-collapsed {
+            transform: translateX(-100%);
+        }
+        .toggle-channels-btn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1001;
+            background: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        .toggle-channels-btn:hover {
+            background: #f0f0f0;
+        }
+        .channel-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .channel-item:hover {
+            background: #f0f0f0;
+        }
+        .channel-item img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .channel-info {
+            flex: 1;
+        }
+        .channel-title {
+            font-weight: bold;
+            margin: 0;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.2;
+        }
+        .channel-subscribers {
+            font-size: 12px;
+            color: #666;
+            margin: 0;
+        }
+        .sort-buttons {
+            margin-bottom: 10px;
+            display: flex;
+            gap: 5px;
+        }
+        .sort-btn {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 3px;
+            background: #f0f0f0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .sort-btn:hover {
+            background: #e0e0e0;
+        }
+        .sort-btn.active {
+            background: #4CAF50;
+            color: white;
+        }
+        .channel-messages {
+            font-size: 12px;
+            color: #666;
+            margin: 0;
+        }
+        .channel-link {
+            display: inline-block;
+            margin-top: 5px;
+            color: #4CAF50;
+            text-decoration: none;
+            font-size: 12px;
+        }
+        .channel-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div id="map-container">
+        <button class="toggle-channels-btn" onclick="toggleChannelsList()">Скрыть</button>
+        <div id="channels-list">
+            <h3>Телеграм-каналы Чувашии</h3>
+            <div class="sort-buttons">
+                <button onclick="sortChannels('subscribers')" class="sort-btn active">По подписчикам</button>
+                <button onclick="sortChannels('messages')" class="sort-btn">По сообщениям</button>
+                <button onclick="sortChannels('alphabet')" class="sort-btn">По алфавиту</button>
+            </div>
+            <div id="channels-container">
+                {{channels_list}}
+            </div>
+        </div>
+        <div class="attribution">Данные © OpenStreetMap contributors, ODbL 1.0</div>
+    </div>
+    <script id="chuvashia-data" type="application/json">
+        {{chuvashia_data}}
+    </script>
+    <script id="channels-data" type="application/json">
+        {{channels_data}}
+    </script>
+    <script>
+        // Глобальные переменные для передачи данных
+        const CHUVASHIA_DATA = JSON.parse(document.getElementById('chuvashia-data').textContent);
+        const CHANNELS_DATA = JSON.parse(document.getElementById('channels-data').textContent);
+
+        function toggleChannelsList() {
+            const channelsList = document.getElementById('channels-list');
+            channelsList.classList.toggle('channels-list-collapsed');
+        }
+
+        function sortChannels(sortType) {
+            const container = document.getElementById('channels-container');
+            const channels = Array.from(container.getElementsByClassName('channel-item'));
+            const buttons = document.getElementsByClassName('sort-btn');
+            
+            // Обновляем активную кнопку
+            Array.from(buttons).forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent.toLowerCase().includes(sortType === 'subscribers' ? 'подписчикам' : sortType === 'messages' ? 'сообщениям' : 'алфавиту')) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Сортируем каналы
+            channels.sort((a, b) => {
+                if (sortType === 'subscribers') {
+                    const aCount = parseInt(a.querySelector('.channel-subscribers').textContent.match(/\d+/)?.[0] || '0');
+                    const bCount = parseInt(b.querySelector('.channel-subscribers').textContent.match(/\d+/)?.[0] || '0');
+                    return bCount - aCount;
+                } else if (sortType === 'messages') {
+                    const aCount = parseInt(a.querySelector('.channel-messages').textContent.match(/\d+/)?.[0] || '0');
+                    const bCount = parseInt(b.querySelector('.channel-messages').textContent.match(/\d+/)?.[0] || '0');
+                    return bCount - aCount;
+                } else {
+                    const aName = a.querySelector('.channel-title').textContent;
+                    const bName = b.querySelector('.channel-title').textContent;
+                    return aName.localeCompare(bName, 'ru');
+                }
+            });
+
+            // Перемещаем отсортированные элементы
+            channels.forEach(channel => container.appendChild(channel));
+        }
+    </script>
+    <script>{{map_js}}</script>
+</body>
+</html> 

@@ -1,0 +1,6 @@
+tgcrypto
+pyrogram
+shapely
+asyncio
+python-dotenv
+peewee
