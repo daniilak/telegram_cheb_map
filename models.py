@@ -122,7 +122,6 @@ def process_group(chat: Chat, history_count: int, photo_bytes: bytes = None):
         
         # Если есть изменения, сохраняем их в историю
         if changes:
-            return
             for key, value in changes.items():
                 save_history(group.id_channel, key, value, group.time_updated)
             group.time_updated = current_time
